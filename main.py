@@ -51,16 +51,18 @@ def get_sharepoint_auth_token(grant_type, client_id, client_secret, resource):
 
 def upload_to_sharepoint(token, filename, folder):
     try:
-      # we open the file to access it so that we can aviod the error "Server relative urls must start with SPWeb.ServerRelativeUrl"
-      # the reason for this error is because of the filepath in Lambda, for instance, "/tmp/filename.txt". However, SharePoint API doesn't like the "/" in front.
+        # we open the file to access it so that we can aviod the error "Server relative urls must start with SPWeb.ServerRelativeUrl"
+        # the reason for this error is because of the filepath in Lambda, for instance, "/tmp/filename.txt". However, SharePoint API doesn't like the "/" in front.
+        url = f"{os.environ['SHAREPOINT_URL']}/GetFolderByServerRelativeUrl('Shared Documents/{folder}')/Files/add(url='{filename[5:]}',overwrite=true)"
+        headers = {
+            'Authorization': 'Bearer {}'.format(token),
+            'Accept': 'application/json;odata=verbose',
+            'Content-Type': 'text/csv',
+        }
         with open(filename, 'rb') as file:
-            url = f"{os.environ['SHAREPOINT_URL']}/GetFolderByServerRelativeUrl('Shared Documents/{folder}')/Files/add(url='{filename[5:]}',overwrite=true)"
-            headers = {
-                'Authorization': 'Bearer {}'.format(token),
-                'Accept': 'application/json;odata=verbose'
-            }
-            res = requests.post(url, headers=headers, verify=False)
-            print(f"[UPLOAD REQUEST RESPONSE] {res.status_code}")
+            res = requests.post(url, headers=headers, data=file, verify=False)
+            res.raise_for_status()
+        print(f"[UPLOAD REQUEST RESPONSE] {res.status_code}")
 
     except requests.ConnectionError as e:
         print(f"[UPLOAD REQUEST ERROR] Failed to upload file to SharePoint | {e}")
